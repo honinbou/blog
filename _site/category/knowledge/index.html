@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="author" content="honinbou" />
 <meta name="keywords" content="" />
-<title>honinbou</title>
+<title>honinbou / 知识经验</title>
 <link href="http://iguowei.net/feed.xml" rel="alternate" title="honinbou" type="application/atom+xml" />
 <link rel="stylesheet" type="text/css" href="/assets/css/site.css" />
 <link rel="stylesheet" type="text/css" href="/assets/css/code/github.css" />
@@ -15,55 +15,21 @@
 
 <div class="main">
 	<!-- 博客分类列表 -->
-<!-- 首页即博客列表 -->
+<!-- 知识经验分类 -->
 
 
 <header>
-	<h1>honinbou</h1>
-	<p class="additional">Some description of your site.</p>
+	<h1><a href="/" class="minor">honinbou</a> / 知识经验</h1>
+	
 </header>
 
 
 
-<article content-loaded="1">
-	<h2><a href="/posts/pyinotify.html">pyinotify使用</a></h2>
-	<p class="meta">
-	<span class="datetime">2012-11-16</span> posted in [<a href="/category/thinking" class="category">闭门思考</a>]
-</p>
-	<div class="article-content">
-	
-		<p>在做米聊线上监控报警工具的时候，需要将每次的监控数据进行记录，这里采用了以下流程。</p>
-
-<p><img src="/assets/pic/2012-11-16-miliao.png" alt="米聊在线服务预警图" /></p>
-
-<p>探测程序会定期将自己的探测结果写入到某个特定的目录中，监控程序会获取到新写入的数据，并见数据写入数据库中。报警程序会定期扫描获取数据库最新结果，并根据报警策略，决定是否进行报警。</p>
-
-<p>问：为啥探测程序会是写入特定的目录中，再有监控程序写入数据库，而不是直接写数据库</p>
-
-<p>答：1. 保证探测程序的简单性，不做过多的事件。
-    2. 解耦合，监控程序类似于一个agent，可以兼容更多不同语义的监控。</p>
-
-<p>问：为啥监控程序会将监控数据写入数据库，而不是直接决定是否报警</p>
-
-<p>答：1. 报警策略可能需要结合监控的多个状态来报警。
-    2. 更重要的是，满足可以网页可以浏览在过去一段时间内的监控状态</p>
 
 
-	
-	</div>
+<article class="empty">
+	<p>该分类下还没有文章</p>
 </article>
-
-<article>
-	<h2><a href="/posts/hello-world.html">你好，世界</a></h2>
-	<p class="meta">
-	<span class="datetime">2012-11-07</span> posted in [<a href="/category/" class="category"></a>]
-</p>
-	<div class="article-content">
-	
-	</div>
-</article>
-
-
 
 
 

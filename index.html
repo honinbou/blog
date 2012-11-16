@@ -1,11 +1,8 @@
 ---
-layout: default
-title: 我的Blog
+layout: list
 ---
-<h2>{{ page.title }}</h2>
-<p>最新文章</p>
-<ul>
-	{% for post in site.posts %}
-	<li>{{ post.date | date_to_string }} <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></li>
-	{% endfor %}
-</ul>
+
+<!-- 首页即博客列表 -->
+{% assign list = site.posts %}
+{% assign preview = true %}
+{% include list.tpl %}
