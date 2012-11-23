@@ -3,7 +3,7 @@
 	<title>honinbou</title>
 	<link href="http://iguowei.net/atom.xml" rel="self" />
 	<link href="http://iguowei.net/" />
-	<updated>2012-11-16T17:08:11+08:00</updated>
+	<updated>2012-11-23T11:15:21+08:00</updated>
 	<id>http://iguowei.net/</id>
 	<author>
 		<name>honinbou</name>
@@ -11,7 +11,91 @@
 	</author>
 	
 	<entry>
-		<title>pyinotify使用</title>
+		<title>amazon 2012-10-22 事故分析总结</title>
+		<link href="http://iguowei.net/posts/amazon-service-event.html" />
+		<updated>2012-11-22T00:00:00+08:00</updated>
+		<id>http://iguowei.net/posts/amazon-service-event.html</id>
+		<content type="html"><![CDATA[<p>amazon在2012年10月22在美国东海岸发生了服务故障，本文是其英文版的总结，[原文点击这里][english-link]</p>
+
+<h1 id="section">事故描述</h1>
+
+<ol>
+  <li>美国时间星期一10:00AM, 东海岸5个区域中的一个Zone发生少量的Elastic Block Store (EBS)服务拒绝，具体表现为无法进行IO请求；</li>
+  <li>内存泄漏的EBS机器到达了某个临界值，开始发生雪崩，很快更多的机器无法处理用户请求，更多的机器无法进行IO请求；</li>
+  <li>11:00AM左右，这个Zone中的大部分存储volume无法使用；</li>
+  <li>11:15AM左右，为了恢复服务，团队决定减少故障转移率，减少更多机器由好的状态，变为不好的状态；</li>
+  <li>11:35AM，系统开始自动恢复部分EBS 存储volume；</li>
+  <li>1:40PM，60%受影响的volume被恢复，团队继续查找原因，并继续恢复余下有问题的volume。由于故障转移和恢复的量太大，导致团队很难真正定位问题；</li>
+  <li>3:10PM，团队定位出真正的问题，并通过释放agent多占的内存来恢复剩下大部分未被恢复的volume；
+8。4:15PM，所有受影响的存储volume均被恢复至正常状态</li>
+</ol>
+
+<h1 id="section-1">原因</h1>
+
+<ol>
+  <li>EBS 服务拒绝原因：
+    <ul>
+      <li>EBS 存储服务器上收集数据的agent有一个潜在的bug, 个人理解agent的作用类似于Mola的agent，个人猜测该agent既可以读数据，也可以写数据。agent设计为对时间不敏感和对数据的延时和缺失有容忍性。</li>
+      <li>上周，其中一台存储机器(chunk)硬件故障并被替换，同时内部DNS(可能用做寻地址，这里估计agent查找后端的server是通过域名，而不是ip来查找)进行更新。</li>
+      <li>因为没有注意到，内部DNS并没有完成更新记录成功，导致少部分存储服务器(chunk 和chunk通讯？)继续连接已经下架的机器，而不是新的好机器，因为架构设计允许数据缺失，这个问题并没有立即触发报警.</li>
+      <li>但这种重试，触发了reporting agent(和刚刚的agent是一个吧？)上一个隐藏的内存泄漏的bug。而且这个泄漏是和重试次数相关的，这样就导致内存持续的被消耗。</li>
+      <li>amazon有监控每个EBS server的总的内存消耗，但是这种消耗，监控系统并没有报警（或者他们的架构是reporting agent是单独的一个agent，但是和EBS server是同机器部署的，并没有监控reporting agent的内存，导致监控系统没有报警?）EBS 由于需要处理用户的数据，其使用的内存差异很大，导致无法设置关于内存使用量的报警策略。</li>
+      <li>周一早上，由于内存泄漏已经非常高了，导致无法正常的处理用户的正常请求。</li>
+    </ul>
+  </li>
+  <li>雪崩的原因
+    <ul>
+      <li>所有云服务的冗余设计，将请求从故障机器转移到服务OK的机器上。由于同时内存泄漏的机器太多，导致没有足够多服务状态OK的机器能够转移请求，导致更多的机器状态由OK变为不OK</li>
+    </ul>
+  </li>
+</ol>
+
+<h1 id="section-2">后期的防备措施</h1>
+
+<ol>
+  <li>针对这种内存泄漏，在所有EBS服务器上进行监控；</li>
+  <li>下周开始，对所有的EBS服务器(包括不同地区)部署新的fix版本；</li>
+  <li>修改系统监控，针对EBS服务器上每个进程进行内存消耗的监控；</li>
+  <li>后续部署资源限制，阻止低优先级别的进程过多的使用机器上的资源；</li>
+  <li>更新内部DNS配置，确保每次DNS的更新都是可靠的到达每台机器；更重要的是，针对这种未更新成功的情况，监控系统能够做出及时的报警；</li>
+</ol>
+
+<p>上面的这些措施，均能及早的定位引发这次事故的原因。另外，还需要评估如何修改EBS故障转移的逻辑，以避免类似这次快速的大范围的雪崩情况</p>
+
+<h1 id="section-3">造成的影响</h1>
+
+<ol>
+  <li>
+    <p>对EC2和EBS APIs 的影响</p>
+  </li>
+  <li>
+    <p>对RDS(Amazon Relational Database Service)的影响</p>
+  </li>
+  <li>
+    <p>对ELB(Amazon Elastic Load Balancing)的影响</p>
+  </li>
+</ol>
+
+<h1 id="aws目前能够完成的功能">AWS目前能够完成的功能</h1>
+
+<h1 id="bcs已经完成的功能">之前BCS已经完成的功能</h1>
+
+<h1 id="section-4">感想</h1>
+
+]]></content>
+	</entry>
+	
+	<entry>
+		<title>lvs 测试</title>
+		<link href="http://iguowei.net/posts/lvs-test.html" />
+		<updated>2012-11-21T00:00:00+08:00</updated>
+		<id>http://iguowei.net/posts/lvs-test.html</id>
+		<content type="html"><![CDATA[
+]]></content>
+	</entry>
+	
+	<entry>
+		<title>pyinotify使用中的陷阱</title>
 		<link href="http://iguowei.net/posts/pyinotify.html" />
 		<updated>2012-11-16T00:00:00+08:00</updated>
 		<id>http://iguowei.net/posts/pyinotify.html</id>
@@ -19,18 +103,124 @@
 
 <p><img src="/assets/pic/2012-11-16-miliao.png" alt="米聊在线服务预警图" /></p>
 
-<p>探测程序会定期将自己的探测结果写入到某个特定的目录中，监控程序会获取到新写入的数据，并见数据写入数据库中。报警程序会定期扫描获取数据库最新结果，并根据报警策略，决定是否进行报警。</p>
+<p>探测程序会定期将自己的探测结果以xml文件的形式写入到特定的目录中，监控程序会监控该目录并到新写入的数据，并插入数据库。报警程序会定期扫描数据库中的数据，结合报警策略，决定是否进行报警。</p>
 
-<p>问：为啥探测程序会是写入特定的目录中，再有监控程序写入数据库，而不是直接写数据库</p>
+<pre><code>问：为啥探测程序会是写入特定的目录中，再有监控程序写入数据库，而不是直接写数据库?
 
-<p>答：1. 保证探测程序的简单性，不做过多的事件。
-    2. 解耦合，监控程序类似于一个agent，可以兼容更多不同语义的监控。</p>
+答：1. 保证探测程序的简单性，不做过多的事件。
 
-<p>问：为啥监控程序会将监控数据写入数据库，而不是直接决定是否报警</p>
+2. 解耦合，监控程序类似于一个agent，可以支持更多不同语义的监控。
 
-<p>答：1. 报警策略可能需要结合监控的多个状态来报警。
-    2. 更重要的是，满足可以网页可以浏览在过去一段时间内的监控状态</p>
+3. 监控＋报警这样更容易做成一个服务
 
+
+问：为啥监控程序会将监控数据写入数据库，而不是直接决定是否报警
+
+答：1. 报警策略可能需要结合监控的多个状态来报警。
+
+2. 更重要的是，满足可以网页可以浏览在过去一段时间内的监控状态
+</code></pre>
+
+<p>如何获取一个指定的目录下，是否有新的数据写入？
+两种方法：</p>
+
+<ol>
+  <li>启动一个线程，定期扫描该文件夹，如果某个文件不存在之前的文件hash表中，则为新增的数据。或者每次写入的文件名相同，此时，比较本次的时间和上次的时间是否相同。</li>
+  <li>使用inotify，在文件夹下有自己感兴趣的event发生时，则调用回调函数，写入数据库中</li>
+</ol>
+
+<p>方法二相对于方法一，减少了定期的轮询开销，减少了前后两个状态的对比，处理方式相对更加优雅。</p>
+
+<p>监控程序使用python编写，所以使用pyinotify来实现inotify的监控。inotify 既可以监视文件，也可以监视目录，可以监视的文件系统事件包括：</p>
+
+<table>
+	<tr>
+		<td>Event Name</td><td>Is an Event</td><td> Description</td>
+	</tr>
+	<tr>
+		<td>IN_ACCESS</td><td>YES</td><td>file was accessed</td>
+	</tr>
+	<tr>
+		<td>IN_ATTRIB</td><td>YES</td><td>metadata changed</td>
+	</tr>
+	<tr>
+		<td>IN_CLOSE_WRITE</td><td>YES</td><td>writtable file was closed</td>
+	</tr>
+	<tr>
+		<td>IN_CREATE</td><td>YES</td><td>file/dir was created in watched directory</td>
+	</tr>
+	<tr>
+		<td>IN_DELETE</td><td>YES</td><td>file/dir was deleted in watched directory</td>
+	</tr>
+	<tr>
+		<td>IN_MODIFY</td><td>YES</td><td>file was modified</td>
+	</tr>
+	<tr>
+		<td>IN_OPEN</td><td>YES</td><td>file was opened</td>
+	</tr>	
+</table>
+
+<p>通过pyinotify来实现对文件系统的监控非常简单，如下是一个demo，只需要重写对应的回调函数既可。</p>
+
+<pre><code>#!/usr/bin/env python
+# encoding:utf-8
+ 
+import os
+from  pyinotify import  WatchManager, Notifier, \
+ProcessEvent,IN_DELETE, IN_CREATE,IN_MODIFY
+ 
+class EventHandler(ProcessEvent):
+    """事件处理"""
+    def process_IN_CREATE(self, event):
+        print   "Create file: %s "  %   os.path.join(event.path,event.name)
+ 
+    def process_IN_DELETE(self, event):
+        print   "Delete file: %s "  %   os.path.join(event.path,event.name)
+ 
+    def process_IN_MODIFY(self, event):
+        print   "Modify file: %s "  %   os.path.join(event.path,event.name)
+ 
+def FSMonitor(path='.'):
+    wm = WatchManager() 
+    mask = IN_DELETE | IN_CREATE |IN_MODIFY
+    notifier = Notifier(wm, EventHandler())
+    wm.add_watch(path, mask,rec=True)
+    print 'now starting monitor %s'%(path)
+    while True:
+        try:
+            notifier.process_events()
+            if notifier.check_events():
+                notifier.read_events()
+        except KeyboardInterrupt:
+            notifier.stop()
+            break
+ 
+if __name__ == "__main__":
+    FSMonitor()
+</code></pre>
+
+<p>放在本项目中，则被hook的函数为IN_CREATE，因为每次探测程序都会写数据到新的文件，然后定期删除监控的数据。但是一个诡异的问题出现了：在IN_CREATE事件发生时，调用程序读取新的数据，读取函数返回错误：
+	xml.parsers.expat.ExpatError: no element found: line 1, column 0</p>
+
+<p>google 该错误信息，很多都说是open了file后忘记了关闭，但是我在这里已经做了close的动作。而且这个问题的出现，是偶尔发生的。</p>
+
+<p>思考后，发现是读取element没有读取到，是不是和文件的content有关，没办法，只能抓日志，并查看content的日志是否合法了，有了这个思路后，下一次一发生这个文件，就找到原因了。content的长度为0，难怪会打印这个错误。</p>
+
+<p>于是疑问来了，为啥content的内容会为0？打开文件时，明明长度是存在的。当然，sleep 1s，基本可以规避这个问题。但是明显没有完全解决这个问题。</p>
+
+<p>后面回去的路上，仔细考虑这个问题，并将demo代码中的事件都监控起来，终于找到问题的根源了。</p>
+
+<p>创建文件的方法为：</p>
+
+<pre><code>f = open(filename, 'w')
+...
+dom.writexml(f, addindent='  ', newl='\n', encoding='utf-8')
+f.close()
+</code></pre>
+
+<p>在这里，实际发生了三个事件，分别是IN_CREATE, IN_MODIFY, IN_CLOSE_WRITE, 分别对应于这三步，虽然我们平时说的是创建一个文件，但在inotify中，创建文件和我们平时指的还是有较大差别。</p>
+
+<p>修复方法自然也出来了，将监控的事件修改为IN_CLOSE_WRITE，问题解决。sleep 只是一个不治本的方法。</p>
 ]]></content>
 	</entry>
 	
