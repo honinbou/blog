@@ -3,7 +3,7 @@
 	<title>honinbou</title>
 	<link href="http://iguowei.net/atom.xml" rel="self" />
 	<link href="http://iguowei.net/" />
-	<updated>2012-11-23T11:19:30+08:00</updated>
+	<updated>2012-11-23T19:37:12+08:00</updated>
 	<id>http://iguowei.net/</id>
 	<author>
 		<name>honinbou</name>
@@ -20,7 +20,7 @@
 <h1 id="section">事故描述</h1>
 
 <ol>
-  <li>美国时间星期一10:00AM, 东海岸5个区域中的一个Zone发生少量的Elastic Block Store (EBS)服务拒绝，具体表现为无法进行IO请求；</li>
+  <li>美国时间星期一10:00AM, 东海岸5个区域中的一个Zone发生少量的Elastic Block Store (EBS)服务拒绝，具体表现为无法进行IO请求,原因为agent在某个异常状态下会发生内存泄漏，而这个内存泄漏是和请求相关的；</li>
   <li>内存泄漏的EBS机器到达了某个临界值，开始发生雪崩，很快更多的机器无法处理用户请求，更多的机器无法进行IO请求；</li>
   <li>11:00AM左右，这个Zone中的大部分存储volume无法使用；</li>
   <li>11:15AM左右，为了恢复服务，团队决定减少故障转移率，减少更多机器由好的状态，变为不好的状态；</li>
@@ -64,17 +64,32 @@
 
 <h1 id="section-3">造成的影响</h1>
 
-<ol>
-  <li>
-    <p>对EC2和EBS APIs 的影响</p>
+<h2 id="ec2和ebs-apis-的影响">对EC2和EBS APIs 的影响</h2>
+
+<ul>
+  <li>描述: 这个事故只影响了一个Zone的EBS volume服务，如果用户在其它的Zone上有足够的空间，理论上其所受的影响不大。amazon投入了大量的精力来避免service APIs受到单个Zone出事故而造成的影响。但实际上仍然有用户抱怨在这次事故中，无法进行IO操作，而此时amazon的监控系统显示EBS APIs服务正常。事后原因为Api的限流，并没有均匀的分布到所有的用户，造成部分用户被Api 限流导致无法操作资源</li>
+  <li>amazon使用限流来保证内部或者外部，恶意或者非恶意的大量访问，参见[add ref]的文章，amazon的平台在设计之初，就非常关注配额和限流.对于单个应用，获取某个正确结果前的多次重试，平台是可以处理的。但是在这次事故中，所有的application一起发生故障，导致对平台产生了大量的负载，amazon有一个基础的限流政策。为了保证恢复过程中其他正常机器服务的稳定和不正常机器的恢复，团队制定了非常激进的限流措施。后面证实这个措施过于激进了。</li>
+  <li>原因: 12:06PM PDT 团队执行了这个激进的限流措施，同时在监控着整体的流量和其他活动，由于监控显示正常，并没有意识到用户已经受到了显著的影响。后来意识到，少部分用户在这个限流策略下，被极高比例的限制Api调用，这些Api调用维持了大量的用户在调用他们的EC2实例和EBS资源，由于这些用户被限制的非常厉害，导致他们在事故中调用APIS服务很难成功，同时影响到他们通过AWS的管理平台来管EC2服务和EBS资源，直到 2:33PM PDT，团队才显著的减少了限流的程度</li>
+  <li>后续的改进: 1. 故障处理中减少使用这种激进的处理策略，使用其它即能够恢复服务，又减少用户感知的限流策略；2. 操作dashbord上增加精细到用户级别的限流监控，而不仅仅是整体的限流监控，以减少这种情况再次发生，同时做出最准确的判断。</li>
+  <li>限流是维持服务健康非常重要的工具，同时由于用户有经常更改限流强度的需求，amazon在不影响用户使用服务的前提下部署使用。从这次事故中，限流措施对许多用户造成的影响远超过团队的最初的意识。这次限流中，没有明显影响到跨多个Zone的高可用架构的程序，但影响到了许多单Zone的用户，导致他们在几个无法恢复到健康状态，甚至是正常工作的down。后面就是赔偿balala的。。。</li>
+</ul>
+
+<h2 id="rdsamazon-relational-database-service的影响">对RDS(Amazon Relational Database Service)的影响</h2>
+
+<ul>
+  <li>描述：因为RDS使用EBS来存储database和log，所以部分在受影响区域的RDS database在这次事故中也悲剧了。当然，使用非影响Zone的RDS instance是不受影响的。</li>
+  <li>amazon的RDS有两种使用模式：Single Availability Zone (Single-AZ)单区域(唯一的一个single DataBase instance in one Zone)和Multi Availability Zone (Multi-AZ)多区域(两个database instance in two different Zone)，类似于mysql的主从模式，其中一个为主一个为从，正常情况下，主database hold住所有的请求，并复制到从上，在主挂掉时，从完成完整性check后，迅速的变为主。</li>
+  <li>Single-AZ的database实例在受影响的Zone中被直接影响了。在事故中，如果database实例中，如果其使用的一个EBS volume有问题，则会被影响到，具体表现为IO请求异常(如上所描述)，Single-AZ的恢复，依赖于其底层使用的EBS volume的恢复。1:30PM PDT, 很多受影响的Single-AZ RDS instance被恢复，3:30PM PDT, 主要的受影响的database instance 被恢复，6:35PM PDT, 几乎所有的Single-AZ RDS instances 恢复。</li>
+  <li>大部分的Multi-AZ在完成一致性check后，能够正常的切换到健康的Zone的从上，但是由于存在两个完全不同的bug(吐槽一下,bug真心多啊，哈哈)，低于10%的Mulit-AZ database instance没有自动的完成故障转移。
+    <ol>
+      <li>部分instance没有正确转移是因为碰到了一个不寻常的IO操作，导致转移逻辑没有正常处理，这些instance需要操作动作，并且存储的时间是11:30AM(个人估计是故障转移时需要写IO操作，而IO操作刚好是在11:30AM这个有问题的时候，导致异常，没太看明白这个bug)</li>
+      <li>第二个bug的触发条件:a.master database instance 和从的连接断了一个很短的时间；b. 此时master的database instance写volume失败，两者几乎同时进行；c. 从master和从连接丢失到master database写volume失败这段时间内，master还在处理业务，而没有将其转移到其从上;在master的IO请求无法处理时，此时系统因为从的数据是过时的数据而被block住了。后续的修改：在master的Zone出现问题开始时，立马进行故障转移；由于问题涉及比较广,估计整个要到12月才能修复并完全上线。database instance在EBS volume恢复后就恢复了。在这两个bug修复后，预计Multi-AZ的问题就会被修复，这两个问题是团队后面最高的优先级,balala…</li>
+    </ol>
   </li>
-  <li>
-    <p>对RDS(Amazon Relational Database Service)的影响</p>
-  </li>
-  <li>
-    <p>对ELB(Amazon Elastic Load Balancing)的影响</p>
-  </li>
-</ol>
+  <li>如果一个application是Multi-AZ，同时在一个Zone不可用后，仍然有足够的资源来进行后续操作的话，那么这个程序应该是可用的。后面又是赔偿等一些balala的…	</li>
+</ul>
+
+<h2 id="elbamazon-elastic-load-balancing的影响">对ELB(Amazon Elastic Load Balancing)的影响</h2>
 
 <h1 id="aws目前能够完成的功能">AWS目前能够完成的功能</h1>
 
