@@ -3,7 +3,7 @@
 	<title>honinbou</title>
 	<link href="http://iguowei.net/atom.xml" rel="self" />
 	<link href="http://iguowei.net/" />
-	<updated>2012-11-23T11:15:21+08:00</updated>
+	<updated>2012-11-23T11:19:30+08:00</updated>
 	<id>http://iguowei.net/</id>
 	<author>
 		<name>honinbou</name>
@@ -15,7 +15,7 @@
 		<link href="http://iguowei.net/posts/amazon-service-event.html" />
 		<updated>2012-11-22T00:00:00+08:00</updated>
 		<id>http://iguowei.net/posts/amazon-service-event.html</id>
-		<content type="html"><![CDATA[<p>amazon在2012年10月22在美国东海岸发生了服务故障，本文是其英文版的总结，[原文点击这里][english-link]</p>
+		<content type="html"><![CDATA[<p>amazon在2012年10月22在美国东海岸发生了服务故障，本文是其英文版的总结，<a href="https://aws.amazon.com/message/680342/">原文点击这里</a></p>
 
 <h1 id="section">事故描述</h1>
 

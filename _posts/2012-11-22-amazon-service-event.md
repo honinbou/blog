@@ -1,7 +1,7 @@
 ---
 layout: post
 title: amazon 2012-10-22 事故分析总结
-category: thinking
+category: knowledge
 tags: [pyinotify]
 ---
 
@@ -56,3 +56,4 @@ amazon在2012年10月22在美国东海岸发生了服务故障，本文是其英
 
 # 感想
 
+[english-link]: https://aws.amazon.com/message/680342/
