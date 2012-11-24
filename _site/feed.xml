@@ -3,12 +3,21 @@
 	<title>honinbou</title>
 	<link href="http://iguowei.net/atom.xml" rel="self" />
 	<link href="http://iguowei.net/" />
-	<updated>2012-11-24T15:32:31+08:00</updated>
+	<updated>2012-11-24T15:43:01+08:00</updated>
 	<id>http://iguowei.net/</id>
 	<author>
 		<name>honinbou</name>
 		<email>weiguo85@gmail.com</email>
 	</author>
+	
+	<entry>
+		<title>性能测试和调优</title>
+		<link href="http://iguowei.net/posts/performance-test.html" />
+		<updated>2012-11-24T00:00:00+08:00</updated>
+		<id>http://iguowei.net/posts/performance-test.html</id>
+		<content type="html"><![CDATA[<p>敬请期待…</p>
+]]></content>
+	</entry>
 	
 	<entry>
 		<title>amazon 2012-10-22 事故分析总结</title>
@@ -163,7 +172,7 @@
 		<link href="http://iguowei.net/posts/lvs-test.html" />
 		<updated>2012-11-21T00:00:00+08:00</updated>
 		<id>http://iguowei.net/posts/lvs-test.html</id>
-		<content type="html"><![CDATA[
+		<content type="html"><![CDATA[<p>敬请期待…</p>
 ]]></content>
 	</entry>
 	
