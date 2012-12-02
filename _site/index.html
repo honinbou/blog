@@ -80,7 +80,7 @@
   <li>iowait CPU用于IO操作的比例</li>
   <li>irq CPU用户硬中断的比例</li>
   <li>soft CPU用于软中断的比例</li>
-  <li>steal hypervisor服务另一个虚拟处理器的时候，虚拟CPU等待实际CPU的时间的百分比*<a href="http://rackerhacker.com/2008/11/04/what-is-steal-time-in-my-sysstat-output/">英文原文</a></li>
+  <li>steal hypervisor服务另一个虚拟处理器的时候，虚拟CPU等待实际CPU的时间的百分比.<a href="http://rackerhacker.com/2008/11/04/what-is-steal-time-in-my-sysstat-output/">英文</a>.<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup></li>
   <li>guest CPU执行虚拟CPU作业的时间</li>
   <li>idle CPU闲置的时间比例</li>
 </ul>
@@ -103,7 +103,7 @@ total = user + system + nice + idle + iowait + irq + softirq
 <h3 id="cpu-2">cpu时间的计算</h3>
 
 <h4 id="tick">tick</h4>
-<p>Linux核心每隔固定周期会发出timer interrupt (IRQ 0)，这个时间就是tick，它是核心度量时间的基本单位*。
+<p>Linux核心每隔固定周期会发出timer interrupt (IRQ 0)，这个时间就是tick，它是核心度量时间的基本单位<sup id="fnref:2"><a href="#fn:2" rel="footnote">2</a></sup>。
 tick是HZ的倒数，HZ的值可在编译核心时设定，可设定100、250、300或1000，查看本机的HZ的值可以通过如下命令来查看：</p>
 
 <pre><code>cat /boot/config-`uname -r` | grep "^CONFIG_HZ"
@@ -130,7 +130,7 @@ softirq 8334431 513266 2992461 1 27910 82629 0 3492 1637012 1203 3076457
   <li>cpu信息分别代表的意义：user, nice, sys, idle, iowait time, Hard irq time, Soft irq time, steal time, guest time</li>
   <li>intr 这行给出中断的信息，第一个为自系统启动以来，发生的所有的中断的次数；然后每个数对应一个特定的中断自系统启动以来所发生的次数。 &lt;/font&gt;&lt;/p&gt;</li>
   <li>ctxt 给出了自系统启动以来CPU发生的上下文交换的次数</li>
-  <li>btime 给出了从系统启动到现在为止的时间，单位为秒。*</li>
+  <li>btime 给出了从系统启动到现在为止的时间，单位为秒<sup id="fnref:3"><a href="#fn:3" rel="footnote">3</a></sup>.</li>
   <li>processes (total_forks) 自系统启动以来所创建的任务的个数目。</li>
   <li>procs_running 当前运行队列的任务的数目。</li>
   <li>procs_blocked 当前被阻塞的任务的数目。</li>
@@ -365,17 +365,13 @@ PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
   <li>Mem的状态：CPU处在系统模式下的时间百分比，包括irq和softirq的值；</li>
   <li>Swap的状态：CPU等待输入输出完成时间的百分比。</li>
   <li>进程对应的信息：进程ID，所属的用户，优先级，Nice值，这些信息都涉及到过;</li>
-  <li>
-    <p>IRT：virtual memory usage </p>
-
+  <li>IRT：virtual memory usage 
     <ol>
       <li>进程“需要的”虚拟内存大小，包括进程使用的库、代码、数据等 </li>
       <li>假如进程申请100m的内存，但实际只使用了10m，那么它会增长100m，而不是实际的使用量 </li>
     </ol>
   </li>
-  <li>
-    <p>RES：resident memory usage 常驻内存 </p>
-
+  <li>RES：resident memory usage 常驻内存 
     <ol>
       <li>进程当前使用的内存大小，但不包括swap out </li>
       <li>包含其他进程的共享 </li>
@@ -391,9 +387,7 @@ PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
       <li>swap out后，它将会降下来 </li>
     </ol>
   </li>
-  <li>
-    <p>DATA </p>
-
+  <li>DATA 
     <ol>
       <li>数据占用的内存。如果top没有显示，按f键可以显示出来。 </li>
       <li>真正的该程序要求的数据空间，是真正在运行中要使用的。</li>
@@ -496,12 +490,19 @@ z: Flags      = Task Flags &lt;sched.h&gt;
 
 <h1 id="demo">典型的瓶颈demo</h1>
 
-<p><small>*steal 值比较高的话，你需要向主机供应商申请扩容虚拟机。服务器上的另一个虚拟机可能拥有更大更多的 CPU 时间片，你可能需要申请升级以与之竞争。另外，高 steal 值可能意味着主机供应商在服务器上过量地出售虚拟机。如果升级了虚拟机，steal值还是不降的话，你应该寻找另一家服务供应商。低steal值意味着你的应用程序在目前的虚拟机上运作良好。因为你的虚拟机不会经常地为了CPU时间与其它虚拟机激烈竞争，你的虚拟机会更快地响应。这一点也暗示了，你的主机供应商没有过量地出售虚拟服务，绝对是一件好事情。</small></p>
-
-<p><small>*你可能发现，如果tick是linux操作系统度量时间的基本单位，那我们常用的timeval变量中的tv_usec这个变量准确么？因为如果tick=250，则最小的时间间隔为4ms，实际上这是两个概念，tick时操作系统进行系统调度等的时间间隔，而我们一般获取操作系统的时间，是从cmos电路中获取的时间，一般是从某一历史时刻开始到现在的时间，也就是为了取得我们操作系统上显示的日期。这个就是所谓的“实时时钟”，它的精确度是微秒，一般是在BIOS中，这也是我们的机器在关机重启后，仍然能够获取正确的取得时间的原因</small></p>
-
-<p><small>*从网上找的含义是这个，但是实际上，我查看的意义为该机器上次启动的时间戳。</small></p>
-
+<div class="footnotes">
+  <ol>
+    <li id="fn:1">
+      <p><small>steal 值比较高的话，你需要向主机供应商申请扩容虚拟机。服务器上的另一个虚拟机可能拥有更大更多的 CPU 时间片，你可能需要申请升级以与之竞争。另外，高 steal 值可能意味着主机供应商在服务器上过量地出售虚拟机。如果升级了虚拟机，steal值还是不降的话，你应该寻找另一家服务供应商。低steal值意味着你的应用程序在目前的虚拟机上运作良好。因为你的虚拟机不会经常地为了CPU时间与其它虚拟机激烈竞争，你的虚拟机会更快地响应。这一点也暗示了，你的主机供应商没有过量地出售虚拟服务，绝对是一件好事情。</small><a href="#fnref:1" rel="reference">&#8617;</a></p>
+    </li>
+    <li id="fn:2">
+      <p><small>你可能发现，如果tick是linux操作系统度量时间的基本单位，那我们常用的timeval变量中的tv_usec这个变量准确么？因为如果tick=250，则最小的时间间隔为4ms，实际上这是两个概念，tick时操作系统进行系统调度等的时间间隔，而我们一般获取操作系统的时间，是从cmos电路中获取的时间，一般是从某一历史时刻开始到现在的时间，也就是为了取得我们操作系统上显示的日期。这个就是所谓的“实时时钟”，它的精确度是微秒，一般是在BIOS中，这也是我们的机器在关机重启后，仍然能够获取正确的取得时间的原因</small><a href="#fnref:2" rel="reference">&#8617;</a></p>
+    </li>
+    <li id="fn:3">
+      <p><small>从网上找的含义是这个，但是实际上，我查看的意义为该机器上次启动的时间戳。</small><a href="#fnref:3" rel="reference">&#8617;</a></p>
+    </li>
+  </ol>
+</div>
 
 	
 	</div>
