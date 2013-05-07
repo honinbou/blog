@@ -3,7 +3,7 @@
 	<title>honinbou</title>
 	<link href="http://iguowei.net/atom.xml" rel="self" />
 	<link href="http://iguowei.net/" />
-	<updated>2012-12-02T11:27:48+08:00</updated>
+	<updated>2012-12-31T16:57:51+08:00</updated>
 	<id>http://iguowei.net/</id>
 	<author>
 		<name>honinbou</name>
@@ -411,10 +411,45 @@ z: Flags      = Task Flags &lt;sched.h&gt;
 <p>top命令下要查看某个用户启动的进程：先输入u，然后输入用户名，再回车</p>
 
 <h3 id="cpu-6">cpu的调优</h3>
-
-<h4 id="epool">改多线程/进程模型为使用epool</h4>
+<p>CPU的各种调优方法，具体可以参看<a href="http://coolshell.cn/articles/7490.html (性能调优攻略)">《性能调优攻略》</a>及其所列的参考资料，这里给出几种可能的调优方法
+####改多线程/进程模型为使用epool</p>
 
 <h4 id="cpucpu">多核心cpu绑定特定进程到指定cpu</h4>
+<p>多核心的CPU系统有一个叫CPU亲和力的概念，能够将进指定程绑定到特定的CPU上。该方法能够优化性能的主要原因是由于CPU cache的优化。<br />
+由于将进程绑定至特定的CPU上，避免了进程在各个CPU之间的调度切换，当进程在CPU间进行一次调度切换时，新CPU上的cache必须被flushed，如果进程在多个核心间来回切换，会导致多次cache的flushed，从而消耗更多CPU资源，这样导致每个的进程会花费更多的CPU时间。将进程绑定到特定的CPU上，能更好的局部化CPU的cache，同时提高cache命中率</p>
+
+<ul>
+  <li>
+    <p>将mysql的进程绑定到指定的CPU</p>
+
+    <ol>
+      <li>如果程序还没有启动，使用taskset将其启动:
+  taskset -cp 1,2,3 /etc/init.d/mysql start</li>
+      <li>如果程序已经启动，并且不宜重启, 获取到其pid
+  taskset -cp 1,2,3 pid</li>
+    </ol>
+  </li>
+  <li>
+    <p>将nginx的进程绑定到特定的CPU</p>
+
+    <p>nginx 也可以使用上述方式，但nginx提供了更精确的控制。在conf/nginx.conf中，有如下一行：  </p>
+
+    <pre><code>  worker_processes  1;     这是用来配置nginx启动几个工作进程的，默认为1。     nginx还支持一个名为worker_cpu_affinity的配置项，也就是说，nginx可以为每个工作进程绑定CPU。如下配置：  
+
+  worker_processes  3;  
+  worker_cpu_affinity 0010 0100 1000;     这里0010 0100 1000是掩码，分别代表第2、3、4颗cpu核心。
+</code></pre>
+
+    <p>重启nginx后，3个工作进程就可以各自用各自的CPU了。</p>
+  </li>
+  <li>
+    <p>自己编写程序，绑定到指定的CPU</p>
+    <ol>
+      <li>如果自己写代码，要把进程绑定到CPU，该怎么做？可以用sched_setaffinity函数。在Linux上，这会触发一次系统调用。</li>
+      <li>如果父进程设置了affinity，之后其创建的子进程是否会有同样的属性？我发现子进程确实继承了父进程的affinity属性。</li>
+    </ol>
+  </li>
+</ul>
 
 <h4 id="section-2">将单核心运行的程序，修改为多核心运行</h4>
 
@@ -479,7 +514,7 @@ z: Flags      = Task Flags &lt;sched.h&gt;
       <p><small>steal 值比较高的话，你需要向主机供应商申请扩容虚拟机。服务器上的另一个虚拟机可能拥有更大更多的 CPU 时间片，你可能需要申请升级以与之竞争。另外，高 steal 值可能意味着主机供应商在服务器上过量地出售虚拟机。如果升级了虚拟机，steal值还是不降的话，你应该寻找另一家服务供应商。低steal值意味着你的应用程序在目前的虚拟机上运作良好。因为你的虚拟机不会经常地为了CPU时间与其它虚拟机激烈竞争，你的虚拟机会更快地响应。这一点也暗示了，你的主机供应商没有过量地出售虚拟服务，绝对是一件好事情。</small><a href="#fnref:1" rel="reference">&#8617;</a></p>
     </li>
     <li id="fn:2">
-      <p><small>你可能发现，如果tick是linux操作系统度量时间的基本单位，那我们常用的timeval变量中的tv_usec这个变量准确么？因为如果tick=250，则最小的时间间隔为4ms，实际上这是两个概念，tick时操作系统进行系统调度等的时间间隔，而我们一般获取操作系统的时间，是从cmos电路中获取的时间，一般是从某一历史时刻开始到现在的时间，也就是为了取得我们操作系统上显示的日期。这个就是所谓的“实时时钟”，它的精确度是微秒，一般是在BIOS中，这也是我们的机器在关机重启后，仍然能够获取正确的取得时间的原因</small><a href="#fnref:2" rel="reference">&#8617;</a></p>
+      <p><small>你可能发现，如果tick是linux操作系统度量时间的基本单位，那我们常用的timeval变量中的tv_usec这个变量准确么？因为如果tick=250，则最小的时间间隔为4ms，实际上这是两个概念，tick时操作系统进行系统调度等的时间间隔，而我们一般获取操作系统的时间，是从cmos电路中获取的时间，一般是从某一历史时刻开始到现在的时间，也就是为了取得我们操作系统上显示的日期。这个就是所谓的“实时时钟”，它的精确度是微秒。另外，系统还有一个与时间有关的时钟：实时时钟（RTC），这是一个硬件时钟，用来持久存放系统时间，系统关闭后靠主板上的微型电池保持计时。系统启动时，内核通过读取RTC来初始化Wall Time,并存放在xtime变量中，这是RTC最主要的作用。一般是在BIOS中，这也是我们的机器在关机重启后，仍然能够获取正确的取得时间的原因</small><a href="#fnref:2" rel="reference">&#8617;</a></p>
     </li>
     <li id="fn:3">
       <p><small>从网上找的含义是这个，但是实际上，我查看的意义为该机器上次启动的时间戳。</small><a href="#fnref:3" rel="reference">&#8617;</a></p>
